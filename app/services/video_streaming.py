@@ -103,8 +103,8 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
             if should_proxy:
                 encoded_url = quote(stream_url)
                 encoded_referer = quote(referer)
-                # Ensure api_base_url is valid
-                base = api_base_url if api_base_url else "http://localhost:8000"
+                # Ensure api_base_url is valid and stripped of trailing slashes
+                base = str(api_base_url).rstrip("/") if api_base_url else "http://localhost:8000"
                 
                 proxy_url = f"{base}/api/v1/hls/proxy?url={encoded_url}&referer={encoded_referer}"
                 # RedTube user_agent logic removed
@@ -231,11 +231,16 @@ async def get_stream_url(url: str, quality: str = "default", api_base_url: str =
             # We need to ensure we have a valid api_base_url
             if not api_base_url:
                 api_base_url = "http://localhost:8000" # fallback
+            base = str(api_base_url).rstrip("/")
                 
+            # Prevent double wrapping
+            if "/api/v1/hls/proxy" in stream_url:
+                return response # already wrapped
+
             encoded_url = quote(stream_url)
             encoded_referer = quote(referer)
             
-            stream_url = f"{api_base_url}/api/v1/hls/proxy?url={encoded_url}&referer={encoded_referer}"
+            stream_url = f"{base}/api/v1/hls/proxy?url={encoded_url}&referer={encoded_referer}"
             # RedTube user_agent logic removed
     
     # Build base response
