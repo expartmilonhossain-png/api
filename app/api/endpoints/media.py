@@ -55,7 +55,7 @@ DUMMY_MEDIA_CONFIG = MediaConfigData(
                     icon="no_encryption_rounded",
                     color_hex="#F44336",
                     playlist_url="https://premium-iptv.com/api/adult.m3u",
-                    requires_pin=True,
+                    requires_pin=False,
                 ),
             ],
         ),
