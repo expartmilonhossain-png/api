@@ -28,7 +28,7 @@ from app.api.endpoints import recommendations, hls, media
 from fastapi import APIRouter
 
 # Scrapers & Models
-from app.scrapers import masa49, xhamster, xnxx, xvideos, pornhub, youporn, redtube, beeg, spankbang, fapnut
+from app.scrapers import masa49, xhamster, xnxx, xvideos, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp
 from app.models.schemas import ScrapeResponse, ListItem, CategoryItem, ScrapeRequest, ListRequest
 
 logging.basicConfig(level=logging.INFO)
@@ -111,6 +111,7 @@ async def _scrape_dispatch(url: str, host: str) -> dict[str, object]:
     if beeg.can_handle(host): return await beeg.scrape(url)
     if spankbang.can_handle(host): return await spankbang.scrape(url)
     if fapnut.can_handle(host): return await fapnut.scrape(url)
+    if pornxp.can_handle(host): return await pornxp.scrape(url)
     raise HTTPException(status_code=400, detail="Unsupported host")
 
 async def _list_dispatch(base_url: str, host: str, page: int, limit: int) -> list[dict[str, object]]:
@@ -124,6 +125,7 @@ async def _list_dispatch(base_url: str, host: str, page: int, limit: int) -> lis
     if beeg.can_handle(host): return await beeg.list_videos(base_url=base_url, page=page, limit=limit)
     if spankbang.can_handle(host): return await spankbang.list_videos(base_url=base_url, page=page, limit=limit)
     if fapnut.can_handle(host): return await fapnut.list_videos(base_url=base_url, page=page, limit=limit)
+    if pornxp.can_handle(host): return await pornxp.list_videos(base_url=base_url, page=page, limit=limit)
     raise HTTPException(status_code=400, detail="Unsupported host")
 
 async def _crawl_dispatch(base_url: str, host: str, start_page: int, max_pages: int, per_page_limit: int, max_items: int) -> list[dict[str, object]]:
@@ -363,6 +365,14 @@ async def get_sources():
                 "favicon": "https://fapnut.net/favicon.ico",
                 "accentColor": "#00AFF0",
                 "category": "paid",
+                "isVerified": False,
+            },
+            {
+                "baseUrl": "https://pornxp.io/",
+                "nickname": "PornXP",
+                "favicon": "https://pornxp.io/favicon.png",
+                "accentColor": "#1a2137",
+                "category": "free",
                 "isVerified": False,
             },
         ],
