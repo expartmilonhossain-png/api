@@ -16,7 +16,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://masa49.org/",
         nickname="Masa49",
-        favicon="https://masa49.org/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/logo%20(1).png",
         accentColor="#7C4DFF",
         category="free",
         isVerified=False,
@@ -27,7 +27,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://xhamster.com/",
         nickname="xHamster",
-        favicon="https://www.xhamster.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon.ico",
         accentColor="#FF5252",
         category="free",
         isVerified=False,
@@ -38,7 +38,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.xnxx.com/",
         nickname="XNXX",
-        favicon="https://www.xnxx.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(1).ico",
         accentColor="#448AFF",
         category="free",
         isVerified=True,
@@ -49,7 +49,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.xvideos.com/",
         nickname="XVideos",
-        favicon="https://www.xvideos.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(2).ico",
         accentColor="#FFAB40",
         category="free",
         isVerified=True,
@@ -60,7 +60,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.pornhub.com/",
         nickname="Pornhub",
-        favicon="https://www.pornhub.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(3).ico",
         accentColor="#FF9100",
         category="free",
         isVerified=False,
@@ -71,7 +71,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.youporn.com/",
         nickname="YouPorn",
-        favicon="https://www.youporn.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(4).ico",
         accentColor="#FF4081",
         category="free",
         isVerified=False,
@@ -82,7 +82,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.redtube.com/",
         nickname="RedTube",
-        favicon="https://www.redtube.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(5).ico",
         accentColor="#D32F2F",
         category="free",
         isVerified=False,
@@ -93,7 +93,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://beeg.com/",
         nickname="Beeg",
-        favicon="https://cdn.brandfetch.io/id21sFe_5X/w/180/h/180/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1764366461758",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/logo%20(2).png",
         accentColor="#00BFA5",
         category="free",
         isVerified=False,
@@ -104,7 +104,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://spankbang.com/",
         nickname="SpankBang",
-        favicon="https://spankbang.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(6).ico",
         accentColor="#FFC107",
         category="free",
         isVerified=False,
@@ -115,7 +115,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://fapnut.net/",
         nickname="OnlyFans",
-        favicon="https://onlyfans.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(7).ico",
         accentColor="#00AFF0",
         category="paid",
         isVerified=False,
@@ -126,7 +126,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://pornxp.io/",
         nickname="PornXP",
-        favicon="https://pornxp.io/favicon.png",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon.png",
         accentColor="#1a2137",
         category="free",
         isVerified=False,

@@ -252,28 +252,8 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     # Updated Selectors based on browser analysis
     # Strategy: Find all potential video items, then group by parent container.
     # The container with the most items is the Main List.
-    container_selector = ".js-video-item, .video-item, .video-list-video"
-    all_items = soup.select(container_selector)
-    selected_items = []
-    
-    if all_items:
-        # Group items by parent
-        parent_counts = {}
-        for item in all_items:
-            p = item.parent
-            if p not in parent_counts:
-                parent_counts[p] = []
-            parent_counts[p].append(item)
-            
-        # Find parent with most items
-        best_parent = None
-        max_items = -1
-        
-        for p, items_list in parent_counts.items():
-            if len(items_list) > max_items:
-                max_items = len(items_list)
-                best_parent = p
-                selected_items = items_list
+    container_selector = ".js-video-item, .video-item, .video-list-video, [data-testid='video-item']"
+    selected_items = soup.select(container_selector)
     
     for item in selected_items:
         try:
@@ -286,11 +266,12 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
              
             if href.startswith("/"): href = "https://spankbang.com" + href
             
-            # Title: in span with text-secondary class (or fallback to .n)
+            # Title: look for the title link in the info section
             title = "Unknown"
-            title_el = item.select_one("span.text-secondary.text-body-md, .n")
-            if title_el:
-                title = title_el.get_text(strip=True)
+            # In new layout, title is in a p -> a -> span
+            title_tag = item.select_one('p a span, .n')
+            if title_tag:
+                title = title_tag.get_text(strip=True)
 
             # Thumbnail
             img = item.find("img")
@@ -308,25 +289,19 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
             if dur_tag: 
                 duration = dur_tag.get_text(strip=True)
             
-            # Views: Find span containing view count (has text-body-md class)
+            # Views: Use data-testid="views"
             views = "0"
-            # Find spans and check for numeric content that looks like views (e.g., "11K", "2.5M")
-            for span in item.find_all("span"):
-                classes = span.get("class", [])
-                if any("text-body-md" in c for c in classes):
-                    txt = span.get_text(strip=True)
-                    # Check if it contains numbers and is short (likely views)
-                    if txt and any(c.isdigit() for c in txt) and len(txt) <= 10:
-                        m = re.search(r'([\d\.]+[KkMm]?)', txt)
-                        if m:
-                            views = m.group(1)
-                            break
+            views_tag = item.select_one('[data-testid="views"]')
+            if views_tag:
+                # Often views are in a nested span with md:text-body-md class
+                views_text_tag = views_tag.select_one('span.md\\:text-body-md, span:last-child')
+                views = (views_text_tag or views_tag).get_text(strip=True)
             
-            # Uploader: in span with text-action-tertiary class
+            # Uploader: Often uses data-testid="title" for the user/pornstar link
             uploader = "Unknown"
-            uploader_el = item.select_one("span.text-action-tertiary")
-            if uploader_el:
-                uploader = uploader_el.get_text(strip=True)
+            uploader_tag = item.select_one('[data-testid="title"] span, span.text-action-tertiary')
+            if uploader_tag:
+                uploader = uploader_tag.get_text(strip=True)
             
             items.append({
                 "url": href,
