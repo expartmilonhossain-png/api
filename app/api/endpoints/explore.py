@@ -134,6 +134,17 @@ EXPLORE_SOURCES = [
         searchUrlTemplate="https://pornxp.io/search?q={query}",
         sourceId="pornxp",
     ),
+    ExploreSourceResponse(
+        baseUrl="https://hqporner.com/",
+        nickname="HQPorner",
+        favicon="https://hqporner.com/favicon.ico",
+        accentColor="#E91E63",
+        category="free",
+        isVerified=False,
+        hasCategories=True,
+        searchUrlTemplate="https://hqporner.com/?q={query}",
+        sourceId="hqporner",
+    ),
 ]
 
 EXPLORE_CONFIG = ExploreConfigData(
