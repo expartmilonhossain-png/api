@@ -309,15 +309,6 @@ async def get_notifications():
             message="You can now download videos directly from XNXX, RedTube, and YouPorn!",
             type="success",
             created_at=datetime.now()
-        ),
-        NotificationItem(
-            id="3",
-            title="Premium Upgrade",
-            message="Check out our premium plans for faster streaming and exclusive content.",
-            type="warning",
-            action_text="View Plans",
-            action_url="apphub://rewards",
-            created_at=datetime.now()
         )
     ]
     return NotificationResponse(
