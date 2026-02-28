@@ -15,7 +15,7 @@ EXPLORE_CATEGORIES = [
 EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://masa49.org/",
-        nickname="Masa49",
+        nickname="Masa",
         favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/logo%20(1).png",
         accentColor="#7C4DFF",
         category="free",
