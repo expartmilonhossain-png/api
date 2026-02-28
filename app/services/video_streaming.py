@@ -25,6 +25,7 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
     """
     # Import here to avoid circular dependency
     from app.scrapers import xnxx, xhamster, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp, hqporner
+    from app.api.endpoints import thumbnails
     from urllib.parse import urlparse
     
     # Parse URL to get host
@@ -139,11 +140,15 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
         }
     else:
         # All other sources: full metadata
+        thumbnail_url = metadata.get("thumbnail_url")
+        if thumbnail_url:
+            thumbnail_url = thumbnails.wrap_thumbnail_url(thumbnail_url, api_base_url)
+            
         response = {
             "url": url,
             "title": metadata.get("title"),
             "description": metadata.get("description"),
-            "thumbnail_url": metadata.get("thumbnail_url"),
+            "thumbnail_url": thumbnail_url,
             "duration": metadata.get("duration"),
             "views": metadata.get("views"),
             "uploader_name": metadata.get("uploader_name"),

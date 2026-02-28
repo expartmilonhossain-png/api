@@ -1,6 +1,7 @@
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Response, Request
 from fastapi.responses import StreamingResponse
+from urllib.parse import quote
 import logging
 
 router = APIRouter()
@@ -63,3 +64,14 @@ async def thumbnail_proxy(
     except Exception as e:
         logger.error(f"Thumbnail Proxy unexpected error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+def wrap_thumbnail_url(url: str, api_base_url: str) -> str:
+    """Helper to wrap HQPorner thumbnails in the proxy URL."""
+    if not url or "hqporner.com" not in url.lower():
+        return url
+    
+    # If already proxied, don't double wrap
+    if "/thumbnails/proxy?url=" in url:
+        return url
+        
+    return f"{api_base_url.rstrip('/')}/api/v1/thumbnails/proxy?url={quote(url)}"

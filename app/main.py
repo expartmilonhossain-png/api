@@ -138,13 +138,17 @@ async def _crawl_dispatch(base_url: str, host: str, start_page: int, max_pages: 
 
 
 @api_v1_router.post("/scrapes", response_model=ScrapeResponse, tags=["Scraping"])
-async def create_scrape(body: ScrapeRequestV1) -> ScrapeResponse:
+async def create_scrape(request: Request, body: ScrapeRequestV1) -> ScrapeResponse:
     """
     Scrape a single video URL.
     Renamed from /scrape to POST /scrapes (create a scrape).
     """
+    from app.config.settings import settings
+    api_base = settings.BASE_URL or str(request.base_url)
     try:
         data = await _scrape_dispatch(str(body.url), body.url.host or "")
+        if "thumbnail_url" in data:
+            data["thumbnail_url"] = thumbnails.wrap_thumbnail_url(data["thumbnail_url"], api_base)
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail="Upstream returned error") from e
     except Exception as e:
@@ -152,7 +156,7 @@ async def create_scrape(body: ScrapeRequestV1) -> ScrapeResponse:
     return ScrapeResponse(**data)
 
 @api_v1_router.get("/videos", response_model=list[ListItem], response_model_exclude_unset=True, tags=["Videos"])
-async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[ListItem]:
+async def list_videos(request: Request, base_url: str, page: int = 1, limit: int = 20) -> list[ListItem]:
     """
     List videos from a category/channel URL.
     Renamed from /list to GET /videos.
@@ -183,12 +187,18 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[Lis
         raise HTTPException(status_code=502, detail="Failed to fetch url") from e
     
     if items:
+        # Wrap thumbnails in proxy for certain sources (like HQPorner)
+        from app.config.settings import settings
+        api_base = settings.BASE_URL or str(request.base_url)
+        for it in items:
+            if "thumbnail_url" in it:
+                it["thumbnail_url"] = thumbnails.wrap_thumbnail_url(it["thumbnail_url"], api_base)
         await cache.set(cache_key, items, ttl_seconds=900)
     
     return [ListItem(**it) for it in items]
 
 @api_v1_router.post("/crawls", response_model=list[ListItem], tags=["Crawling"])
-async def create_crawl(body: CrawlRequestV1) -> list[ListItem]:
+async def create_crawl(request: Request, body: CrawlRequestV1) -> list[ListItem]:
     """
     Crawl a site for videos.
     Renamed from /crawl to POST /crawls.
@@ -206,6 +216,14 @@ async def create_crawl(body: CrawlRequestV1) -> list[ListItem]:
         raise HTTPException(status_code=e.response.status_code, detail="Upstream returned error") from e
     except Exception as e:
         raise HTTPException(status_code=502, detail="Failed to fetch url") from e
+
+    if items:
+        # Wrap thumbnails in proxy for certain sources (like HQPorner)
+        from app.config.settings import settings
+        api_base = settings.BASE_URL or str(request.base_url)
+        for it in items:
+            if "thumbnail_url" in it:
+                it["thumbnail_url"] = thumbnails.wrap_thumbnail_url(it["thumbnail_url"], api_base)
 
     return [ListItem(**it) for it in items]
 
@@ -241,19 +259,35 @@ from fastapi import Query
 
 @api_v1_router.get("/search/global", tags=["Search"])
 async def global_search_endpoint(
+    request: Request,
     query: str = Query(..., description="Search keyword"),
     sites: Optional[list[str]] = Query(None, description="Sites to search"),
     limit_per_site: int = Query(10, ge=1, le=50),
     max_sites: int = Query(30, ge=1, le=50)
 ):
-    return await _global_search(query, sites, limit_per_site, max_sites)
+    from app.config.settings import settings
+    api_base = settings.BASE_URL or str(request.base_url)
+    res = await _global_search(query, sites, limit_per_site, max_sites)
+    if "results" in res:
+        for item in res["results"]:
+            if "thumbnail_url" in item:
+                item["thumbnail_url"] = thumbnails.wrap_thumbnail_url(item["thumbnail_url"], api_base)
+    return res
 
 @api_v1_router.get("/trending/global", tags=["Trending"])
 async def global_trending_endpoint(
+    request: Request,
     sites: Optional[list[str]] = Query(None),
     limit_per_site: int = Query(10, ge=1, le=50)
 ):
-    return await global_trending(sites, limit_per_site)
+    from app.config.settings import settings
+    api_base = settings.BASE_URL or str(request.base_url)
+    res = await global_trending(sites, limit_per_site)
+    if "results" in res:
+        for item in res["results"]:
+            if "thumbnail_url" in item:
+                item["thumbnail_url"] = thumbnails.wrap_thumbnail_url(item["thumbnail_url"], api_base)
+    return res
 
 # --- Video Streaming Info ---
 from app.services.video_streaming import get_video_info, get_stream_url
