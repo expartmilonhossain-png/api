@@ -227,8 +227,12 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     target_url = base_url.rstrip("/")
 
     if page > 1:
-        # PornWex pagination: /page/N/ at the end
-        target_url = f"{target_url}/page/{page}/"
+        # PornWex pagination: /{N}/ appended directly (e.g., /latest-updates/2/)
+        # Homepage doesn't support pagination, redirect to /latest-updates/ for page > 1
+        if target_url.rstrip("/") == "https://www.pornwex.tv" or target_url.rstrip("/") == "https://pornwex.tv":
+            target_url = f"https://www.pornwex.tv/latest-updates/{page}/"
+        else:
+            target_url = f"{target_url}/{page}/"
     elif not target_url.endswith("/"):
         target_url += "/"
 
