@@ -380,37 +380,6 @@ async def get_apphub_version():
     }
 
 
-# --- API Domain Config ---
-from app.api_domain_config import get_api_domain, set_api_domain, get_admin_password
-from fastapi.responses import HTMLResponse
-from pathlib import Path
-
-@app.get("/api/apphub/config", tags=["System"])
-async def get_apphub_config():
-    """Return the current API base URL for app auto-discovery."""
-    return {"apiBaseUrl": get_api_domain()}
-
-@app.post("/api/apphub/config", tags=["System"])
-async def update_apphub_config(body: dict):
-    """Update the API base URL (password-protected)."""
-    password = body.get("password", "")
-    new_url = body.get("apiBaseUrl", "").strip().rstrip("/")
-
-    if password != get_admin_password():
-        raise HTTPException(status_code=403, detail="Invalid admin password")
-    if not new_url or not new_url.startswith("http"):
-        raise HTTPException(status_code=400, detail="Invalid URL — must start with http:// or https://")
-
-    set_api_domain(new_url)
-    return {"apiBaseUrl": new_url, "message": "Domain updated successfully"}
-
-@app.get("/admin/config", response_class=HTMLResponse, tags=["Admin"])
-async def admin_config_page():
-    """Serve the admin config HTML page."""
-    template_path = Path(__file__).parent / "templates" / "config.html"
-    return HTMLResponse(content=template_path.read_text(encoding="utf-8"))
-
-
 # Include Main V1 Router
 app.include_router(api_v1_router)
 
