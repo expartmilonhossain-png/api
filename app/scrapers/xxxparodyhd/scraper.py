@@ -22,6 +22,11 @@ async def fetch_html(url: str) -> str:
     }
     resp = await pool.client.get(url, headers=headers, follow_redirects=True)
     resp.raise_for_status()
+    
+    # Check if a paginated request was redirected to the base URL (meaning no more pages)
+    if "/page/" in url and "/page/" not in str(resp.url):
+        return ""
+        
     return resp.text
 
 
@@ -204,11 +209,25 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     target_url = base_url.rstrip("/")
 
     if page > 1:
-        target_url = f"{target_url}/page/{page}/"
-    elif not target_url.endswith("/"):
+        if "?" in target_url:
+            base, query = target_url.split("?", 1)
+            target_url = f"{base.rstrip('/')}/page/{page}/?{query}"
+        else:
+            target_url = f"{target_url}/page/{page}/"
+    elif not target_url.endswith("/") and "?" not in target_url:
         target_url += "/"
 
-    html = await fetch_html(target_url)
+    import httpx
+    try:
+        html = await fetch_html(target_url)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            return []
+        raise
+
+    if not html:
+        return []
+        
     soup = BeautifulSoup(html, "lxml")
 
     items: list[dict[str, Any]] = []
