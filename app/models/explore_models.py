@@ -11,6 +11,7 @@ class ExploreSourceResponse(BaseModel):
     hasCategories: bool = False
     searchUrlTemplate: str = ""
     sourceId: str
+    disable: bool = False
 
 class ExploreCategoryResponse(BaseModel):
     id: str

@@ -23,6 +23,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://masa49.org/?s={query}",
         sourceId="masa",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://xhamster.com/",
@@ -34,6 +35,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://xhamster.com/search/videos?q={query}",
         sourceId="xhamster",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.xnxx.com/",
@@ -45,6 +47,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://www.xnxx.com/search/{query}",
         sourceId="xnxx",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.xvideos.com/",
@@ -56,6 +59,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://www.xvideos.com/?k={query}",
         sourceId="xvideos",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.pornhub.com/",
@@ -67,6 +71,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://www.pornhub.com/video/search?search={query}",
         sourceId="pornhub",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.youporn.com/",
@@ -78,6 +83,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://www.youporn.com/search/?query={query}",
         sourceId="youporn",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.redtube.com/",
@@ -89,6 +95,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://www.redtube.com/?search={query}",
         sourceId="redtube",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://beeg.com/",
@@ -100,6 +107,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://beeg.com/?f={query}",
         sourceId="beeg",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://spankbang.com/",
@@ -111,6 +119,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://spankbang.com/s/{query}/",
         sourceId="spankbang",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://fapnut.net/",
@@ -122,6 +131,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://fapnut.net/?s={query}",
         sourceId="fapnut",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://pornxp.io/",
@@ -133,6 +143,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://pornxp.io/search?q={query}",
         sourceId="pornxp",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://hqporner.com/",
@@ -144,6 +155,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://hqporner.com/?q={query}",
         sourceId="hqporner",
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://xxxparodyhd.net/",
@@ -155,6 +167,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://xxxparodyhd.net/?s={query}",
         sourceId="xxxparodyhd",
+        disable=True,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.pornwex.tv/",
@@ -166,6 +179,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://www.pornwex.tv/search/{query}/",
         sourceId="pornwex",
+        disable=True,
     ),
 ]
 
@@ -181,7 +195,17 @@ async def get_explore_config() -> ExploreConfigResponse:
     Get the configuration for the Explore Page, including available categories and sources.
     This allows the Explore page to be fully backend-driven.
     """
+    # Filter sources to only include those not disabled
+    enabled_sources = [source for source in EXPLORE_SOURCES if not source.disable]
+    
+    # Create a copy of the config with only enabled sources
+    filtered_config = ExploreConfigData(
+        title=EXPLORE_CONFIG.title,
+        categories=EXPLORE_CONFIG.categories,
+        sources=enabled_sources
+    )
+    
     return ExploreConfigResponse(
         status="success",
-        data=EXPLORE_CONFIG
+        data=filtered_config
     )
