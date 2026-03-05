@@ -233,6 +233,7 @@ async def scrape_json_media(url: str) -> dict[str, Any]:
     }
     
     all_streams = []
+    raw_media_definitions = []
     processed_urls = {url}
     urls_to_process = [url]
     
@@ -245,6 +246,10 @@ async def scrape_json_media(url: str) -> dict[str, Any]:
                     continue
                     
                 data = resp.json()
+                # Preserve raw quality objects for high-fidelity frontend support
+                if isinstance(data, list):
+                    raw_media_definitions.extend(data)
+                
                 for item in data:
                     video_url = item.get("videoUrl")
                     if not video_url:
@@ -309,7 +314,8 @@ async def scrape_json_media(url: str) -> dict[str, Any]:
         video_data = {
             "streams": unique_streams,
             "default": default_url,
-            "has_video": bool(unique_streams)
+            "has_video": bool(unique_streams),
+            "media_definitions": raw_media_definitions
         }
         
         return {

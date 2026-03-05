@@ -296,4 +296,8 @@ async def get_stream_url(url: str, quality: str = "default", api_base_url: str =
         for quality_label, quality_url in qualities.items():
             response[quality_label] = quality_url
             
+        # USER REQUEST: Return raw media definitions if available (e.g. from Tube8 scraper)
+        if "media_definitions" in video_data:
+            return video_data["media_definitions"]
+            
     return response
