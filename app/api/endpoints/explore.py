@@ -201,7 +201,7 @@ EXPLORE_SOURCES = [
         category="free",
         isVerified=False,
         hasCategories=True,
-        searchUrlTemplate="https://www.pornhat.com/search/?q={query}",
+        searchUrlTemplate="https://www.pornhat.com/search/{query}/",
         sourceId="pornhat",
         disable=False,
     ),
