@@ -246,21 +246,41 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
             # Preview video URL from data-preview-custom on the anchor
             preview = a.get("data-preview-custom") or a.get("data-preview") or thumb
 
-            # Duration from .video-meta or .duration inside the card
+            # ul.video-meta contains: duration (first li), date (fa-calendar-o), views (fa-eye)
             duration = "0:00"
-            dur_el = card.select_one(".video-meta, .duration, .time, .thumb-bl-info .duration")
-            if dur_el:
-                duration = dur_el.get_text(strip=True)
-
-            # Views — appears as text like "1.9K" inside .thumb-total or similar
+            date_added = ""
             views = "0"
-            v_el = card.select_one(".thumb-total, .views, .view-count, .info-views")
-            if v_el:
-                views = v_el.get_text(strip=True).replace("views", "").strip()
+
+            meta_ul = card.select_one("ul.video-meta")
+            if meta_ul:
+                li_items = meta_ul.find_all("li")
+                for li in li_items:
+                    icon = li.find("i")
+                    span = li.find("span")
+                    text = span.get_text(strip=True) if span else li.get_text(strip=True)
+
+                    if icon:
+                        icon_cls = " ".join(icon.get("class", []))
+                        if "calendar" in icon_cls:
+                            date_added = text
+                        elif "eye" in icon_cls:
+                            views = text
+                        elif "clock" in icon_cls or "time" in icon_cls:
+                            duration = text
+                    else:
+                        # First li without icon is usually the duration
+                        if duration == "0:00" and text:
+                            duration = text
+
+            # Fallback for duration from .duration element
+            if duration == "0:00":
+                dur_el = card.select_one(".duration, .time")
+                if dur_el:
+                    duration = dur_el.get_text(strip=True)
 
             # Uploader
             uploader = "Unknown"
-            u_el = card.select_one(".username a, .uploader a, .author a, .thumb-bl-info a")
+            u_el = card.select_one(".username a, .uploader a, .author a")
             if u_el:
                 uploader = u_el.get_text(strip=True)
 
@@ -270,6 +290,7 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
                 "thumbnail_url": thumb,
                 "duration": duration,
                 "views": views,
+                "date": date_added,
                 "uploader_name": uploader,
                 "preview_url": preview,
             })
