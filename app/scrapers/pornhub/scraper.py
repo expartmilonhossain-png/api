@@ -4,8 +4,9 @@ import json
 import re
 from typing import Any, Optional
 
-import httpx
 from bs4 import BeautifulSoup
+
+from app.core.pool import fetch_html as pool_fetch_html
 
 
 def can_handle(host: str) -> bool:
@@ -63,14 +64,7 @@ async def fetch_html(url: str) -> str:
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Cookie": "platform=pc" # Critical for consistent desktop HTML structure
     }
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(20.0, connect=20.0),
-        headers=headers,
-    ) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.text
+    return await pool_fetch_html(url, headers=headers, allow_redirects=True)
 
 
 def _extract_video_streams(html: str) -> dict[str, Any]:

@@ -49,16 +49,13 @@ async def fetch_html(url: str) -> str:
             continue
 
     print(f"⚠️ SpankBang all curl_cffi attempts failed. Last error: {last_error}. Falling back to httpx...")
-    # Fallback to httpx if curl_cffi fails
-    from app.core import pool
+    from app.core.pool import pool, fetch_html as pool_fetch_html
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Cookie": "age_verified=1; sb_theme=dark",
     }
-    resp = await pool.client.get(url, headers=headers)
-    resp.raise_for_status()
-    return resp.text
+    return await pool_fetch_html(url, headers=headers)
 
 
 def _extract_video_streams(html: str) -> dict[str, Any]:

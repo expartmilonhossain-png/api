@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import httpx
+import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException

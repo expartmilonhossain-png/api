@@ -5,7 +5,7 @@ import json
 import re
 from typing import Any, Optional
 
-import httpx
+import urllib.parse
 from bs4 import BeautifulSoup
 
 
@@ -31,9 +31,7 @@ async def fetch_html(url: str) -> str:
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
     }
-    resp = await pool.client.get(url, headers=headers)
-    resp.raise_for_status()
-    return resp.text
+    return await pool.fetch_html(url, headers=headers)
 
 
 def _first_non_empty(*values: Optional[str]) -> Optional[str]:
@@ -390,7 +388,7 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
         return []
 
     soup = BeautifulSoup(html, "html.parser")
-    base_uri = httpx.URL(used)
+    base_uri = urllib.parse.urlparse(used)
 
     items: list[dict[str, Any]] = []
     seen: set[str] = set()

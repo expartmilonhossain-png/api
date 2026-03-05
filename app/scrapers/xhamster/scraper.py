@@ -5,8 +5,9 @@ import json
 import re
 from typing import Any, Optional
 
-import httpx
 from bs4 import BeautifulSoup
+
+from app.core.pool import fetch_html as pool_fetch_html
 
 
 def can_handle(host: str) -> bool:
@@ -49,14 +50,7 @@ async def fetch_html(url: str) -> str:
         "Accept-Language": "en-US,en;q=0.9",
     }
 
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(20.0, connect=20.0),
-        headers=headers,
-    ) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.text
+    return await pool_fetch_html(url, headers=headers, allow_redirects=True)
 
 
 def _first_non_empty(*values: Optional[str]) -> Optional[str]:
@@ -554,7 +548,7 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
         return []
 
     soup = BeautifulSoup(html, "lxml")
-    base_uri = httpx.URL(used)
+    base_uri = urllib.parse.urlparse(used)
 
     items: list[dict[str, Any]] = []
     seen: set[str] = set()

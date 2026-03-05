@@ -5,8 +5,9 @@ import re
 import os
 from typing import Any, Optional
 
-import httpx
 from bs4 import BeautifulSoup
+
+from app.core.pool import pool, fetch_html as pool_fetch_html, fetch_json as pool_fetch_json
 
 def can_handle(host: str) -> bool:
     host_lower = host.lower()
@@ -26,14 +27,7 @@ async def fetch_html(url: str) -> str:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     }
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(30.0, connect=30.0),
-        headers=headers,
-    ) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.text
+    return await pool_fetch_html(url, headers=headers, allow_redirects=True)
 
 async def _resolve_proxy_url(proxy_url: str) -> list[dict]:
     """
@@ -45,12 +39,11 @@ async def _resolve_proxy_url(proxy_url: str) -> list[dict]:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Accept": "application/json",
         }
-        async with httpx.AsyncClient(headers=headers, timeout=10.0, follow_redirects=True) as client:
-            resp = await client.get(proxy_url)
-            if resp.status_code != 200:
+        async with pool.request("GET", proxy_url, headers=headers, timeout=10.0, allow_redirects=True) as resp:
+            if resp.status != 200:
                 return []
             
-            data = resp.json()
+            data = await resp.json()
             if isinstance(data, list):
                 streams = []
                 for item in data:

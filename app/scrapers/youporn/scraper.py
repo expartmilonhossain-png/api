@@ -5,7 +5,6 @@ import re
 import os
 from typing import Any, Optional
 
-import httpx
 from bs4 import BeautifulSoup
 
 def can_handle(host: str) -> bool:
@@ -55,16 +54,13 @@ def get_categories() -> list[dict]:
         return []
 
 async def fetch_html(url: str) -> str:
-    from app.core import pool
+    from app.core.pool import pool, fetch_html as pool_fetch_html
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        # Mobile cookie might be needed? Usually desktop is safer for parsing.
-        # YouPorn might not strict check 'platform=pc' but good practice if structure varies
+        "Cookie": "platform=pc" # Critical for consistent desktop HTML structure
     }
-    resp = await pool.client.get(url, headers=headers)
-    resp.raise_for_status()
-    return resp.text
+    return await pool_fetch_html(url, headers=headers, allow_redirects=True)
 
 async def _resolve_proxy_url(proxy_url: str) -> list[dict]:
     """
@@ -72,16 +68,16 @@ async def _resolve_proxy_url(proxy_url: str) -> list[dict]:
     Returns a list of stream objects with quality, url, format.
     """
     try:
-        from app.core import pool
+        from app.core.pool import pool
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Accept": "application/json",
         }
-        resp = await pool.client.get(proxy_url, headers=headers)
-        if resp.status_code != 200:
-            return []
+        async with pool.request("GET", proxy_url, headers=headers, timeout=10.0, allow_redirects=True) as resp:
+            if resp.status != 200:
+                return []
             
-        data = resp.json()
+            data = await resp.json()
         if isinstance(data, list):
             streams = []
             for item in data:
