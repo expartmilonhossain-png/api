@@ -57,17 +57,20 @@ def get_categories() -> list[dict]:
         return []
 
 
-from app.core import pool
-
 async def fetch_html(url: str) -> str:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Cookie": "platform=pc" # Critical for consistent desktop HTML structure
     }
-    resp = await pool.client.get(url, headers=headers)
-    resp.raise_for_status()
-    return resp.text
+    async with httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=httpx.Timeout(20.0, connect=20.0),
+        headers=headers,
+    ) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        return resp.text
 
 
 def _extract_video_streams(html: str) -> dict[str, Any]:
