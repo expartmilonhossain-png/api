@@ -117,7 +117,12 @@ def _extract_video_streams(html: str) -> dict[str, Any]:
     streams.sort(key=_qval, reverse=True)
 
     default_url = hls_url or (streams[0]["url"] if streams else None)
-    return {"streams": streams, "default": default_url, "has_video": bool(streams)}
+    return {
+        "streams": streams,
+        "default": default_url,
+        "has_video": bool(streams),
+        "media_definitions": data if 'data' in locals() else []
+    }
 
 
 def parse_page(html: str, url: str) -> dict[str, Any]:

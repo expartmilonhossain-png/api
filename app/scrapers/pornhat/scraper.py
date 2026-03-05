@@ -98,7 +98,22 @@ def _extract_video_streams(html: str) -> dict[str, Any]:
     streams.sort(key=_qval, reverse=True)
 
     default_url = hls_url or (streams[0]["url"] if streams else None)
-    return {"streams": streams, "default": default_url, "has_video": bool(streams)}
+    # Synthesize media_definitions if not already present from raw sources
+    definitions = []
+    for s in streams:
+        definitions.append({
+            "quality": s["quality"].replace("p", ""),
+            "videoUrl": s["url"],
+            "format": s["format"],
+            "defaultQuality": (s["url"] == default_url)
+        })
+
+    return {
+        "streams": streams,
+        "default": default_url,
+        "has_video": bool(streams),
+        "media_definitions": definitions
+    }
 
 
 def parse_page(html: str, url: str) -> dict[str, Any]:

@@ -144,7 +144,8 @@ def _extract_video_streams(html: str) -> dict[str, Any]:
     return {
         "streams": streams,
         "default": default_url,
-        "has_video": len(streams) > 0
+        "has_video": len(streams) > 0,
+        "media_definitions": media_defs if 'media_defs' in locals() else []
     }
 
 def parse_page(html: str, url: str) -> dict[str, Any]:
