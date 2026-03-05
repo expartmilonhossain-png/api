@@ -189,9 +189,9 @@ def parse_page(html: str, url: str) -> dict[str, Any]:
 
 
 async def scrape(url: str) -> dict[str, Any]:
-    # Check if this is a direct HLS media URL (user requested)
-    if "/media/hls/" in url:
-        return await scrape_direct_hls(url)
+    # Check if this is a direct Tube8 media JSON URL (user requested)
+    if "/media/hls/" in url or "/media/mp4/" in url:
+        return await scrape_json_media(url)
     
     # Check if this is a direct .m3u8 URL
     if ".m3u8" in url.lower():
@@ -221,9 +221,10 @@ async def scrape(url: str) -> dict[str, Any]:
     return parse_page(html, url)
 
 
-async def scrape_direct_hls(url: str) -> dict[str, Any]:
+async def scrape_json_media(url: str) -> dict[str, Any]:
     """
-    Directly scrape the HLS JSON endpoint provided by Tube8.
+    Directly scrape the HLS/MP4 JSON endpoints provided by Tube8.
+    Recursively follows related media endpoints (e.g. HLS can point to MP4).
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -231,54 +232,89 @@ async def scrape_direct_hls(url: str) -> dict[str, Any]:
         "Cookie": "platform=pc"
     }
     
+    all_streams = []
+    processed_urls = {url}
+    urls_to_process = [url]
+    
     async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
-        resp = await client.get(url, headers=headers)
-        if resp.status_code != 200:
-            raise Exception(f"Failed to fetch HLS data: {resp.status_code}")
-            
-        data = resp.json()
-        streams = []
-        hls_url = None
-        
-        for item in data:
-            video_url = item.get("videoUrl")
-            if not video_url:
-                continue
-                
-            quality = str(item.get("quality", "adaptive"))
-            if quality.isdigit():
-                quality = f"{quality}p"
-                
-            fmt = item.get("format", "hls")
-            
-            stream = {
-                "quality": quality,
-                "url": video_url,
-                "format": fmt
-            }
-            streams.append(stream)
-            
-            if item.get("defaultQuality") or not hls_url:
-                hls_url = video_url
+        while urls_to_process:
+            current_url = urls_to_process.pop(0)
+            try:
+                resp = await client.get(current_url, headers=headers)
+                if resp.status_code != 200:
+                    continue
+                    
+                data = resp.json()
+                for item in data:
+                    video_url = item.get("videoUrl")
+                    if not video_url:
+                        continue
+                        
+                    # Check if this is another JSON endpoint to follow
+                    if ("/media/hls/" in video_url or "/media/mp4/" in video_url) and video_url not in processed_urls:
+                        urls_to_process.append(video_url)
+                        processed_urls.add(video_url)
+                        continue
 
-        # If we have only one adaptive HLS stream, try to resolve it as a master playlist
-        if len(streams) == 1 and streams[0]["quality"] == "adaptive" and ".m3u8" in streams[0]["url"]:
-             try:
-                 resolved = await resolve_hls_master(streams[0]["url"])
-                 if resolved:
-                     streams = resolved
-             except Exception:
-                 pass
+                    quality = str(item.get("quality", "adaptive"))
+                    if quality.isdigit():
+                        quality = f"{quality}p"
+                        
+                    fmt = item.get("format", "hls")
+                    if "/media/mp4/" in current_url:
+                        fmt = "mp4"
+                    
+                    stream = {
+                        "quality": quality,
+                        "url": video_url,
+                        "format": fmt
+                    }
+                    all_streams.append(stream)
+                    
+                    # If it's an adaptive HLS, try to resolve the master playlist right away
+                    if quality == "adaptive" and ".m3u8" in video_url:
+                        try:
+                            resolved = await resolve_hls_master(video_url)
+                            if resolved:
+                                all_streams.extend(resolved)
+                        except Exception:
+                            pass
+            except Exception:
+                continue
+
+        # Deduplicate and sort
+        seen = set()
+        unique_streams = []
+        for s in all_streams:
+            key = (s["quality"], s["url"])
+            if key not in seen:
+                unique_streams.append(s)
+                seen.add(key)
+
+        def _qval(s: dict) -> int:
+            digits = "".join(filter(str.isdigit, s["quality"]))
+            return int(digits) if digits else 0
+        
+        unique_streams.sort(key=_qval, reverse=True)
+
+        # Default URL: Prefer HLS adaptive, then highest quality
+        default_url = url
+        for s in unique_streams:
+            if s["quality"] == "adaptive":
+                default_url = s["url"]
+                break
+        if default_url == url and unique_streams:
+            default_url = unique_streams[0]["url"]
 
         video_data = {
-            "streams": streams,
-            "default": hls_url,
-            "has_video": bool(streams)
+            "streams": unique_streams,
+            "default": default_url,
+            "has_video": bool(unique_streams)
         }
         
         return {
             "url": url,
-            "title": "Tube8 HLS Stream",
+            "title": "Tube8 Media Stream",
             "description": None,
             "thumbnail_url": None,
             "duration": None,

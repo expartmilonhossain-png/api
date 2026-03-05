@@ -223,7 +223,7 @@ async def get_stream_url(url: str, quality: str = "default", api_base_url: str =
     fmt = "mp4"
     should_proxy = False
     referer = ""
-    if ".m3u8" in stream_url:
+    if ".m3u8" in stream_url or "/media/hls/" in stream_url:
         fmt = "hls"
         if selected_quality == "default":
             selected_quality = "adaptive"
