@@ -179,7 +179,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="",
         sourceId="pornwex",
-        disable=False,
+        disable=True,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.tube8.com/",
