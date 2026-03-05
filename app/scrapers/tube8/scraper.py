@@ -192,6 +192,30 @@ async def scrape(url: str) -> dict[str, Any]:
     # Check if this is a direct HLS media URL (user requested)
     if "/media/hls/" in url:
         return await scrape_direct_hls(url)
+    
+    # Check if this is a direct .m3u8 URL
+    if ".m3u8" in url.lower():
+        streams = await resolve_hls_master(url)
+        if streams:
+            video_data = {
+                "streams": streams,
+                "default": url,
+                "has_video": True
+            }
+            return {
+                "url": url,
+                "title": "Tube8 HLS Playlist",
+                "description": None,
+                "thumbnail_url": None,
+                "duration": None,
+                "views": None,
+                "uploader_name": "Tube8",
+                "category": "Tube8",
+                "tags": [],
+                "video": video_data,
+                "related_videos": [],
+                "preview_url": None,
+            }
         
     html = await fetch_html(url)
     return parse_page(html, url)
@@ -237,6 +261,15 @@ async def scrape_direct_hls(url: str) -> dict[str, Any]:
             if item.get("defaultQuality") or not hls_url:
                 hls_url = video_url
 
+        # If we have only one adaptive HLS stream, try to resolve it as a master playlist
+        if len(streams) == 1 and streams[0]["quality"] == "adaptive" and ".m3u8" in streams[0]["url"]:
+             try:
+                 resolved = await resolve_hls_master(streams[0]["url"])
+                 if resolved:
+                     streams = resolved
+             except Exception:
+                 pass
+
         video_data = {
             "streams": streams,
             "default": hls_url,
@@ -257,6 +290,77 @@ async def scrape_direct_hls(url: str) -> dict[str, Any]:
             "related_videos": [],
             "preview_url": None,
         }
+
+
+async def resolve_hls_master(url: str) -> list[dict[str, Any]]:
+    """
+    Parses an HLS master playlist (.m3u8) into individual quality streams.
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    }
+    
+    async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+        resp = await client.get(url, headers=headers)
+        if resp.status_code != 200:
+            return []
+            
+        content = resp.text
+        if "#EXT-X-STREAM-INF" not in content:
+            return []
+            
+        streams = []
+        lines = content.splitlines()
+        
+        base_url = url.rsplit("/", 1)[0] + "/"
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if line.startswith("#EXT-X-STREAM-INF:"):
+                # Extract resolution or bandwidth
+                quality = "adaptive"
+                res_match = re.search(r"RESOLUTION=(\d+x\d+)", line)
+                if res_match:
+                    res = res_match.group(1)
+                    height = res.split("x")[1]
+                    quality = f"{height}p"
+                else:
+                    bw_match = re.search(r"BANDWIDTH=(\d+)", line)
+                    if bw_match:
+                        bw = int(bw_match.group(1))
+                        # Rough mapping if resolution is missing
+                        if bw > 5000000: quality = "1080p"
+                        elif bw > 2500000: quality = "720p"
+                        elif bw > 1000000: quality = "480p"
+                        elif bw > 500000: quality = "360p"
+                        else: quality = "240p"
+
+                # Next line should be the URL
+                if i + 1 < len(lines):
+                    stream_url = lines[i+1].strip()
+                    if not stream_url.startswith("http"):
+                        if stream_url.startswith("/"):
+                            # Absolute path on same host
+                            parsed_root = url.split("/", 3)[:3]
+                            root = "/".join(parsed_root)
+                            stream_url = root + stream_url
+                        else:
+                            # Relative path
+                            stream_url = base_url + stream_url
+                    
+                    streams.append({
+                        "quality": quality,
+                        "url": stream_url,
+                        "format": "hls"
+                    })
+        
+        # Sort by quality
+        def _qval(s: dict) -> int:
+            digits = "".join(filter(str.isdigit, s["quality"]))
+            return int(digits) if digits else 0
+        
+        streams.sort(key=_qval, reverse=True)
+        return streams
 
 
 async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, Any]]:
