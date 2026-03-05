@@ -181,6 +181,30 @@ EXPLORE_SOURCES = [
         sourceId="pornwex",
         disable=False,
     ),
+    ExploreSourceResponse(
+        baseUrl="https://www.tube8.com/",
+        nickname="Tube8",
+        favicon="https://www.tube8.com/favicon.ico",
+        accentColor="#E53935",
+        category="free",
+        isVerified=False,
+        hasCategories=True,
+        searchUrlTemplate="https://www.tube8.com/search?q={query}",
+        sourceId="tube8",
+        disable=False,
+    ),
+    ExploreSourceResponse(
+        baseUrl="https://www.pornhat.com/",
+        nickname="PornHat",
+        favicon="https://www.pornhat.com/favicon.ico",
+        accentColor="#212121",
+        category="free",
+        isVerified=False,
+        hasCategories=True,
+        searchUrlTemplate="https://www.pornhat.com/search/?q={query}",
+        sourceId="pornhat",
+        disable=False,
+    ),
 ]
 
 EXPLORE_CONFIG = ExploreConfigData(

@@ -25,5 +25,7 @@ from . import pornxp
 from . import hqporner
 from . import xxxparodyhd
 from . import pornwex
+from . import tube8
+from . import pornhat
 
-__all__ = ['xnxx', 'xhamster', 'xvideos', 'masa49', 'pornhub', 'youporn', 'redtube', 'beeg', 'spankbang', 'fapnut', 'pornxp', 'hqporner', 'xxxparodyhd', 'pornwex']
+__all__ = ['xnxx', 'xhamster', 'xvideos', 'masa49', 'pornhub', 'youporn', 'redtube', 'beeg', 'spankbang', 'fapnut', 'pornxp', 'hqporner', 'xxxparodyhd', 'pornwex', 'tube8', 'pornhat']
