@@ -179,7 +179,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://www.pornwex.tv/search/{query}/",
         sourceId="pornwex",
-        disable=True,
+        disable=False,
     ),
 ]
 
