@@ -167,7 +167,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="https://xxxparodyhd.net/?s={query}",
         sourceId="xxxparodyhd",
-        disable=True,
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.pornwex.tv/",
@@ -179,7 +179,7 @@ EXPLORE_SOURCES = [
         hasCategories=True,
         searchUrlTemplate="",
         sourceId="pornwex",
-        disable=True,
+        disable=False,
     ),
     ExploreSourceResponse(
         baseUrl="https://www.tube8.com/",
