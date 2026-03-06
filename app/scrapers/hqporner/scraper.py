@@ -50,14 +50,18 @@ async def fetch_html(url: str) -> str:
             continue
 
     print(f"⚠️ HQPorner all curl_cffi attempts failed. Last error: {last_error}. Falling back to httpx...")
-    from app.core import pool
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    }
-    resp = await pool.client.get(url, headers=headers)
-    resp.raise_for_status()
-    return resp.text
+    import httpx
+    async with httpx.AsyncClient(
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        },
+        follow_redirects=True,
+        timeout=20.0
+    ) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        return resp.text
 
 
 async def _extract_video_from_iframe(iframe_src: str) -> dict[str, Any]:
@@ -208,17 +212,11 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     """List videos from an HQPorner listing/category page."""
     url = base_url.rstrip("/")
 
-    # Pagination: handle different URL patterns
+    # Pagination: append /page_number for pages > 1
     if page > 1:
-        if "?" in url:
-            # Search URL: /?q=query -> /?q=query&p=2
-            url = f"{url}&p={page}"
-        elif url == "https://hqporner.com" or url == "http://hqporner.com":
-            # Home Page: / -> /hdporn/2
-            url = f"{url}/hdporn/{page}"
-        else:
-            # Category/Top: /category/name -> /category/name/2
-            url = f"{url}/{page}"
+        # Category pages: /category/name/2
+        # Home/top: /hdporn/2 or /top/2
+        url = f"{url}/{page}"
 
     try:
         html = await fetch_html(url)
@@ -226,15 +224,6 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
         return []
 
     soup = BeautifulSoup(html, "lxml")
-    
-    # Check for "No results" or "End of list" message
-    # HQPorner shows "CAN'T FIND ..." or "SORRY, I CAN'T FIND ..." when no more results
-    header = soup.select_one("h1.main-h1, h1")
-    if header:
-        header_text = header.get_text().upper()
-        if "CAN'T FIND" in header_text or "SORRY" in header_text:
-            return []
-
     items = []
 
     # Video items are in section.box.feature containers
