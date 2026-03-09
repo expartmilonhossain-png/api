@@ -1,6 +1,7 @@
 # Core
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
+a2wsgi==1.10.8
 httpx==0.28.1
 aiohttp==3.10.11
 beautifulsoup4==4.12.3

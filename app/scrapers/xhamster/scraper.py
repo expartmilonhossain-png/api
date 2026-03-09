@@ -42,21 +42,7 @@ def _find_duration_like_text(node: Any) -> Optional[str]:
     return m.group(0) if m else None
 
 
-async def fetch_html(url: str) -> str:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
-
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(20.0, connect=20.0),
-        headers=headers,
-    ) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.text
+from app.core.pool import pool, fetch_html
 
 
 def _first_non_empty(*values: Optional[str]) -> Optional[str]:
@@ -610,11 +596,23 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
         uploader_el = card.find(class_=re.compile(r"video-uploader__name|video-thumb-uploader__name|video-user-info__name"))
         if not uploader_el:
              # Try finding uploader link within the card only
-            uploader_link = card.find('a', href=re.compile(r"/users/|/channels/"))
+            uploader_link = card.find('a', href=re.compile(r"/users/|/channels/|/creators/|/pornstars/"))
             if uploader_link:
                 uploader_name = _text(uploader_link)
         else:
             uploader_name = _text(uploader_el)
+            uploader_link = uploader_el
+            
+        # Fallback if xHamster censors the name with "*******" for certain IP ranges
+        if uploader_name and ("*" in uploader_name or uploader_name.strip() == ""):
+            uploader_name = None
+            
+        if not uploader_name and uploader_link:
+            href = uploader_link.get("href", "")
+            if href:
+                parts = [p for p in href.split("/") if p and "?" not in p]
+                if parts:
+                    uploader_name = parts[-1].replace("-", " ").title()
             
         # Extract uploader logo/avatar
         # Typical classes: video-uploader-logo, video-thumb-uploader__logo, etc.

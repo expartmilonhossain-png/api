@@ -320,8 +320,20 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[di
             # Uploader
             uploader = "Unknown"
             u_el = card.select_one(".username a, .uploader a, .author a")
+            
+            if not u_el:
+                # Some pornhat cards just have an anchor pointing to /model/ or /users/ without wrapper classes
+                u_el = card.select_one("a[href*='/users/'], a[href*='/channels/'], a[href*='/model/'], a[href*='/models/'], a[href*='/pornstar/']")
+                
             if u_el:
                 uploader = u_el.get_text(strip=True)
+                
+                # If the text is empty or generic, extract the name from the URL itself
+                if not uploader or uploader.lower() in ("unknown", "user", "model", ""):
+                    href = u_el.get("href", "")
+                    parts = [p for p in href.split("/") if p and "?" not in p]
+                    if parts:
+                        uploader = parts[-1].replace("-", " ").title()
 
             items.append({
                 "url": href,
@@ -337,5 +349,3 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[di
             continue
 
     return items[:limit]
-
-

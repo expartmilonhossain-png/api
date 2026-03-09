@@ -3,11 +3,39 @@ HTTP Connection Pooling for Scrapers
 Reuse connections for 50-100ms performance boost
 """
 
+import asyncio
+import random
 import aiohttp
 import logging
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# Realistic browser User-Agent pool for rotation
+USER_AGENTS = [
+    # Chrome Windows
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    # Chrome Mac
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    # Firefox Windows
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
+    # Firefox Mac
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) Gecko/20100101 Firefox/123.0',
+    # Safari Mac
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+    # Edge Windows
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
+    # Chrome Linux
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    # Chrome Android
+    'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.90 Mobile Safari/537.36',
+]
+
+def get_random_user_agent() -> str:
+    """Return a random User-Agent string from the pool."""
+    return random.choice(USER_AGENTS)
 
 
 class ConnectionPool:
@@ -28,7 +56,17 @@ class ConnectionPool:
         Returns:
             Configured ClientSession
         """
-        if self._session is None or self._session.closed:
+        current_loop = asyncio.get_running_loop()
+        
+        # Create a new session if:
+        # 1. We don't have one
+        # 2. It is closed
+        # 3. We are running in a DIFFERENT event loop (fixes 502s with our custom ASGI bridge)
+        if (
+            getattr(self, '_session', None) is None 
+            or self._session.closed 
+            or getattr(self, '_loop', None) is not current_loop
+        ):
             # Connection pooling configuration
             connector = aiohttp.TCPConnector(
                 limit=100,  # Max 100 concurrent connections total
@@ -45,18 +83,24 @@ class ConnectionPool:
                 sock_read=20  # Read timeout
             )
             
-            # Create session
+            # Create session (no static User-Agent — rotated per request)
             self._session = aiohttp.ClientSession(
                 connector=connector,
                 timeout=timeout,
                 headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate',  # Removed 'br' because python brotli is missing
+                    'DNT': '1',
                 }
             )
             
-            logger.info("Created HTTP connection pool with 100 connections")
+            # Save the loop reference to avoid recreating on the same request
+            self._loop = current_loop
+            logger.info("Created HTTP connection pool with 100 connections (loop updated)")
         
         return self._session
+
     
     async def close(self):
         """Close the session and cleanup connections"""
@@ -69,40 +113,68 @@ class ConnectionPool:
 pool = ConnectionPool()
 
 
-async def fetch_html(url: str, **kwargs) -> str:
+async def fetch_html(url: str, retries: int = 3, **kwargs) -> str:
     """
-    Fetch HTML using connection pool
-    
-    Args:
-        url: URL to fetch
-        **kwargs: Additional arguments for session.get()
-        
-    Returns:
-        HTML content
+    Fetch HTML using connection pool with rotating User-Agent and exponential backoff.
+    Retries on 429 (rate limited), 403 (blocked), or 5xx errors.
     """
     session = await pool.get_session()
-    
-    async with session.get(url, **kwargs) as response:
-        response.raise_for_status()
-        return await response.text()
+    headers = kwargs.pop('headers', {})
+    headers.setdefault('User-Agent', get_random_user_agent())
+
+    last_error = None
+    for attempt in range(retries):
+        try:
+            async with session.get(url, headers=headers, **kwargs) as response:
+                if response.status in (429, 403, 503):
+                    wait = 2 ** attempt  # 1s, 2s, 4s
+                    logger.warning(f"Blocked ({response.status}) on {url}, retrying in {wait}s (attempt {attempt+1}/{retries})")
+                    await asyncio.sleep(wait)
+                    headers['User-Agent'] = get_random_user_agent()  # Rotate on retry
+                    continue
+                response.raise_for_status()
+                return await response.text()
+        except Exception as e:
+            last_error = e
+            if attempt < retries - 1:
+                wait = 2 ** attempt
+                logger.warning(f"Fetch error on {url}: {e}, retrying in {wait}s")
+                await asyncio.sleep(wait)
+                headers['User-Agent'] = get_random_user_agent()
+
+    raise last_error or Exception(f"Failed to fetch {url} after {retries} retries")
 
 
-async def fetch_json(url: str, **kwargs) -> dict:
+async def fetch_json(url: str, retries: int = 3, **kwargs) -> dict:
     """
-    Fetch JSON using connection pool
-    
-    Args:
-        url: URL to fetch
-        **kwargs: Additional arguments for session.get()
-        
-    Returns:
-        JSON data
+    Fetch JSON using connection pool with rotating User-Agent and exponential backoff.
+    Retries on 429 (rate limited), 403 (blocked), or 5xx errors.
     """
     session = await pool.get_session()
-    
-    async with session.get(url, **kwargs) as response:
-        response.raise_for_status()
-        return await response.json()
+    headers = kwargs.pop('headers', {})
+    headers.setdefault('User-Agent', get_random_user_agent())
+
+    last_error = None
+    for attempt in range(retries):
+        try:
+            async with session.get(url, headers=headers, **kwargs) as response:
+                if response.status in (429, 403, 503):
+                    wait = 2 ** attempt
+                    logger.warning(f"Blocked ({response.status}) on {url}, retrying in {wait}s (attempt {attempt+1}/{retries})")
+                    await asyncio.sleep(wait)
+                    headers['User-Agent'] = get_random_user_agent()
+                    continue
+                response.raise_for_status()
+                return await response.json()
+        except Exception as e:
+            last_error = e
+            if attempt < retries - 1:
+                wait = 2 ** attempt
+                logger.warning(f"Fetch error on {url}: {e}, retrying in {wait}s")
+                await asyncio.sleep(wait)
+                headers['User-Agent'] = get_random_user_agent()
+
+    raise last_error or Exception(f"Failed to fetch {url} after {retries} retries")
 
 
 async def post_json(url: str, data: dict, **kwargs) -> dict:

@@ -5,8 +5,9 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import starlette.exceptions
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
+import asyncio
 # Logging
 import logging
 
@@ -34,28 +35,15 @@ from app.models.schemas import ScrapeResponse, ListItem, CategoryItem, ScrapeReq
 
 logging.basicConfig(level=logging.INFO)
 
-# Lifespan context manager for startup/shutdown
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Manage application lifecycle"""
-    # Startup
-    asyncio.create_task(cache_cleanup())
-    asyncio.create_task(rate_limit_cleanup())
-    logging.info("✅ Started background cleanup tasks")
-    logging.info("✅ Zero-cost optimizations enabled")
-    
-    yield
-    
-    # Shutdown
-    await pool.close()
-    logging.info("✅ Closed HTTP connection pool")
+# NOTE: Lifespan REMOVED for cPanel/Passenger compatibility.
+# a2wsgi runs ASGI lifespans synchronously, which blocks the first request.
+# Background tasks can be added back later if using a true ASGI server like uvicorn.
 
 # Create FastAPI app
 app = FastAPI(
     title="AppHub API",
     description="Professional Standard API with Versioning, Plural Naming, and Queue Services",
     version="2.1.0",
-    lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json"
@@ -76,7 +64,7 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
-app.middleware("http")(rate_limit_middleware)
+# app.middleware("http")(rate_limit_middleware)
 
 # ==============================================================================
 # API V1 Router
@@ -87,7 +75,6 @@ api_v1_router = APIRouter(prefix="/api/v1")
 
 from pydantic import BaseModel, HttpUrl, field_validator, Field
 from typing import Any, Optional
-import asyncio
 
 class ScrapeRequestV1(BaseModel):
     url: HttpUrl
@@ -153,10 +140,16 @@ async def create_scrape(request: Request, body: ScrapeRequestV1) -> ScrapeRespon
     """
     from app.config.settings import settings
     api_base = settings.BASE_URL or str(request.base_url)
+    cache_key = f"scrape:{str(body.url)}"
+    cached_result = await cache.get(cache_key)
+    if cached_result:
+        logging.info(f"⚡ Cache HIT for scrape {body.url}")
+        return ScrapeResponse(**cached_result)
     try:
         data = await _scrape_dispatch(str(body.url), body.url.host or "")
         if "thumbnail_url" in data:
             data["thumbnail_url"] = thumbnails.wrap_thumbnail_url(data["thumbnail_url"], api_base)
+        await cache.set(cache_key, data, ttl_seconds=7200)  # Cache scrapes for 2 hours
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail="Upstream returned error") from e
     except Exception as e:
@@ -201,7 +194,7 @@ async def list_videos(request: Request, base_url: str, page: int = 1, limit: int
         for it in items:
             if "thumbnail_url" in it:
                 it["thumbnail_url"] = thumbnails.wrap_thumbnail_url(it["thumbnail_url"], api_base)
-        await cache.set(cache_key, items, ttl_seconds=900)
+        await cache.set(cache_key, items, ttl_seconds=3600)  # Cache for 1 hour (aggressive)
     
     return [ListItem(**it) for it in items]
 
@@ -440,5 +433,6 @@ app.include_router(api_v1_router)
 
 @app.get("/health", tags=["System"])
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    logging.info("Health route CALLED successfully")
+    return {"status": "ok", "mode": "safe"}
 

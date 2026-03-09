@@ -1,67 +1,41 @@
-# Backend API Configuration
-
-from pydantic_settings import BaseSettings
-from typing import Optional
+import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from typing import Optional, Any
 from functools import lru_cache
 
-
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables"""
-    
     # Application
-    APP_NAME: str = "Advanced Scraper API"
-    APP_VERSION: str = "2.0.0"
+    APP_NAME: str = "AppHub API"
+    APP_VERSION: str = "2.2.0"
     DEBUG: bool = False
-    
-    # Server
-    MAX_SITES_SEARCH: int = 30
-    
-    # Server configuration
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-    RELOAD: bool = False
-    BASE_URL: Optional[str] = None # Manual override for proxy URLs, None defaults to request.base_url
+    BASE_URL: str = ""  # e.g. https://apphubx.store/4.0  (set in .env if needed)
     
     # Security
-    SECRET_KEY: str = "your-secret-key-change-in-production-min-32-chars"
+    SECRET_KEY: str = "change-this-to-a-secure-key"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS
-    CORS_ORIGINS: list[str] = ["*"]
+    CORS_ORIGINS: Any = "*"
     CORS_ALLOW_CREDENTIALS: bool = True
-    CORS_ALLOW_METHODS: list[str] = ["*"]
-    CORS_ALLOW_HEADERS: list[str] = ["*"]
+    CORS_ALLOW_METHODS: Any = "*"
+    CORS_ALLOW_HEADERS: Any = "*"
     
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./scraper.db"  # Default to SQLite
-    # For PostgreSQL: postgresql+asyncpg://user:password@localhost/dbname
-    
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_ENABLED: bool = True
-    CACHE_TTL_SCRAPE: int = 3600  # 1 hour
-    CACHE_TTL_LIST: int = 900  # 15 minutes
+    DATABASE_URL: str = "sqlite+aiosqlite:///./scraper_v2.db"
+    REDIS_ENABLED: bool = False
     
     # Rate Limiting
-    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_ENABLED: bool = False
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
     
-    # Celery (Background Jobs)
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
-    
-    # Monitoring
-    SENTRY_DSN: Optional[str] = None
+    # Monitoring & Logging
     ENABLE_METRICS: bool = True
-    
-    # Logging
     LOG_LEVEL: str = "INFO"
-    LOG_FORMAT: str = "json"  # json or text
-    
-
+    LOG_FORMAT: str = "json"
     
     # Scraping
     SCRAPER_TIMEOUT: int = 30
@@ -72,20 +46,34 @@ class Settings(BaseSettings):
     HLS_PROXY_ENABLED: bool = True
     HLS_PROXY_TIMEOUT: int = 30
     
-    # API Keys
-    REQUIRE_AUTH: bool = False  # Set to True to require authentication
+    # API Auth
+    REQUIRE_AUTH: bool = False
     API_KEY_HEADER: str = "X-API-Key"
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
+    # Robust Parser for CORS and other lists
+    @field_validator("CORS_ORIGINS", "CORS_ALLOW_METHODS", "CORS_ALLOW_HEADERS", mode="after")
+    @classmethod
+    def parse_robust_list(cls, v: Any) -> list[str]:
+        if isinstance(v, list): return v
+        if not v or not isinstance(v, str): return ["*"]
+        v = v.strip()
+        if v.startswith("[") and v.endswith("]"):
+            try:
+                import json
+                return json.loads(v)
+            except: pass
+        return [i.strip() for i in v.split(",") if i.strip()]
+
+    # Pydantic Configuration
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
+        case_sensitive=False, 
+        extra="ignore",
+        env_ignore_empty=True
+    )
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance"""
     return Settings()
 
-
-# Convenience accessor
 settings = get_settings()
