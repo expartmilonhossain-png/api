@@ -180,7 +180,9 @@ async def gosexpod_stream(
     # Stream the video with the proper Referer header
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        "Referer": BASE_URL + "/",
+        "Referer": url,  # Use the exact video page URL as Referer
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
     }
 
     # Forward Range header for seeking support
