@@ -24,7 +24,7 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
         }
     """
     # Import here to avoid circular dependency
-    from app.scrapers import xnxx, xhamster, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp, hqporner, xxxparodyhd, pornwex, tube8, pornhat
+    from app.scrapers import xnxx, xhamster, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp, hqporner, xxxparodyhd, pornwex, tube8, pornhat, brazzpw, gosexpod, watcherotic
     from app.api.endpoints import thumbnails
     from urllib.parse import urlparse
     
@@ -68,10 +68,16 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
         scraper_module = tube8
     elif pornhat.can_handle(host):
         scraper_module = pornhat
+    elif brazzpw.can_handle(host):
+        scraper_module = brazzpw
+    elif gosexpod.can_handle(host):
+        scraper_module = gosexpod
+    elif watcherotic.can_handle(host):
+        scraper_module = watcherotic
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported host: {host}. Supported: xnxx, xhamster, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp, hqporner, xxxparodyhd, pornwex, tube8, pornhat"
+            detail=f"Unsupported host: {host}. Supported: xnxx, xhamster, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp, hqporner, xxxparodyhd, pornwex, tube8, pornhat, brazzpw, gosexpod, watcherotic"
         )
     
     try:
@@ -110,6 +116,10 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
             if "pornxp.com" in stream_url or "porn-xp.com" in stream_url:
                 should_proxy = True
                 referer = "https://pornxp.io/"
+            
+            if "brazzpw.com" in stream_url:
+                should_proxy = True
+                referer = "https://brazzpw.com/"
                 
             if should_proxy:
                 encoded_url = quote(stream_url)
@@ -237,6 +247,10 @@ async def get_stream_url(url: str, quality: str = "default", api_base_url: str =
     if "pornxp.com" in stream_url or "porn-xp.com" in stream_url:
          should_proxy = True
          referer = "https://pornxp.io/"
+         
+    if "brazzpw.com" in stream_url:
+         should_proxy = True
+         referer = "https://brazzpw.com/"
          
     if should_proxy:
             from urllib.parse import quote
