@@ -98,40 +98,7 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
             detail="No video streams found for this URL. Video may be premium or removed."
         )
     
-    # --- Gosexpod special handling ---
-    # Gosexpod uses IP-locked signed URLs (md5+expires tied to requester IP).
-    # The scrape() above runs on the client's IP (not the server's), so the CDN
-    # URL returned can't be proxied from a different server IP.
-    # Solution: Return a server-side stream proxy URL that re-scrapes on demand.
-    if scraper_module == gosexpod:
-        from urllib.parse import quote as _quote
-        base = str(api_base_url).rstrip("/") if api_base_url else "http://localhost:8000"
-        proxy_stream_url = f"{base}/api/v1/hls/gosexpod/stream?url={_quote(url)}"
-        video_data = {
-            "streams": [{"quality": "default", "url": proxy_stream_url, "format": "mp4"}],
-            "hls": None,
-            "default": proxy_stream_url,
-            "has_video": True,
-        }
-        metadata["video"] = video_data
-        # Skip proxy_wrap below for gosexpod
-        return {
-            "url": url,
-            "title": metadata.get("title"),
-            "description": metadata.get("description"),
-            "thumbnail_url": metadata.get("thumbnail_url"),
-            "duration": metadata.get("duration"),
-            "views": metadata.get("views"),
-            "uploader_name": metadata.get("uploader_name"),
-            "category": metadata.get("category"),
-            "tags": metadata.get("tags", []),
-            "related_videos": metadata.get("related_videos", []),
-            "preview_url": metadata.get("preview_url"),
-            "video": video_data,
-            "playable": True,
-        }
-    
-
+    # Post-process streams to wrap with proxy if needed (Beeg, etc.)
     # This logic mirrors get_stream_url's proxy wrapping but for the entire list
     if video_data.get("has_video") and video_data.get("streams"):
         from urllib.parse import quote
@@ -153,11 +120,6 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
             if "brazzpw.com" in stream_url:
                 should_proxy = True
                 referer = "https://brazzpw.com/"
-                
-            # Gosexpod CDN hotlink protection (e2c.gosexpod.com, e3c.gosexpod.com, etc.)
-            if "gosexpod.com" in stream_url and stream_url != url:
-                should_proxy = True
-                referer = "https://www.gosexpod.com/"
                 
             if should_proxy:
                 encoded_url = quote(stream_url)
