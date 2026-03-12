@@ -167,11 +167,8 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
         # Views (in badge on left side)
         views_el = card.select_one('.thumbs__bage_left .thumbs__bage_text')
         views_text = views_el.get_text(strip=True) if views_el else None
-        views = None
-        if views_text:
-            m = re.search(r'(\d+)', views_text)
-            if m:
-                views = int(m.group(1))
+        # Keep as string to match ListItem.views: Optional[str] schema
+        views = views_text  # e.g. "24 views"
 
         video_url = BASE_URL + href if href.startswith('/') else href
 
